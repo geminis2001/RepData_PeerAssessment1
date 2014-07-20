@@ -1,20 +1,87 @@
 # Reproducible Research: Peer Assessment 1
+```{r echo=FALSE}
+    opts_chunk$set(echo=TRUE)
+```
 
 
 ## Loading and preprocessing the data
-
-
+the NA values are removed and aggregate the steps by day
+```{r}
+   activity<-read.csv("activity.csv")
+   c_act<-subset(activity,!is.na(activity$steps))
+   total<-aggregate(steps~date,c_act,sum)
+```
 
 ## What is mean total number of steps taken per day?
-
-
+The histogram of steps by day
+```{r}
+barplot(total$steps,names.arg=as.matrix(total$date),xlab="date",ylab="steps",main="Steps by day")
+```
+Mean and median
+```{r}
+data.frame(mean=round(mean(total$steps),digits=2),median=median(total$steps))
+```
 
 ## What is the average daily activity pattern?
 
+Time Series of 5-minutes interval
+```{r}
+with(activity,plot(interval,steps,type="l"))
+```
 
-
+5-interval with the maximun value 
+```{r}
+activity[which.max( activity$steps),]
+```
 ## Imputing missing values
-
-
+Total de NA values in the data
+```{r}
+nrow(activity[is.na(activity$steps),])
+```
+Change the NA with the mean by day 
+```{r}
+media<-aggregate(steps~date,c_act,mean)
+impute<-function (x){
+  elrow<-activity[x,1]
+  if(is.na(elrow)){
+    l<-media[media[1]==as.character(activity[x,2])][2]
+    ret<-1
+  }else{
+    ret<-elrow
+  }
+  if (is.na(ret)) ret=0
+  ret
+}
+for (i in 1:nrow(activity))
+{
+   activity[i,1]<-impute(i)
+}
+total<-aggregate(steps~date,c_act,sum)
+```
+The histogram of imputed data
+```{r}
+barplot(total$steps,names.arg=as.matrix(total$date),xlab="date",ylab="steps",main="Steps by day")
+```
+Mean and median of imputed data
+```{r}
+data.frame(mean=round(mean(total$steps),digits=2),median=median(total$steps))
+```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+Make the new factor
+```{r}
+options(verbose=FALSE)
+wd<-data.frame(total,weekd="")
+for (i in 1:nrow(wd))
+{
+  l<-weekdays(as.Date(as.character(wd[i,1])))
+  if (l=="sábado" || l=="domingo"){
+    ##my computer have spanish language
+    wd[i,3]<-"weekend"
+  }else{
+    wd[i,3]<-"weekday"
+  }
+  
+}
+```
+Panel showing weekend activity versus weekday
