@@ -1,6 +1,7 @@
 # Reproducible Research: Peer Assessment 1
 ```{r echo=FALSE}
     opts_chunk$set(echo=TRUE)
+    library(ggplot2)
 ```
 
 
@@ -9,7 +10,7 @@ the NA values are removed and aggregate the steps by day
 ```{r}
    activity<-read.csv("activity.csv")
    c_act<-subset(activity,!is.na(activity$steps))
-   total<-aggregate(steps~date,c_act,sum)
+   total<-aggregate(steps~date,activity,sum)    
 ```
 
 ## What is mean total number of steps taken per day?
@@ -26,7 +27,8 @@ data.frame(mean=round(mean(total$steps),digits=2),median=median(total$steps))
 
 Time Series of 5-minutes interval
 ```{r}
-with(activity,plot(interval,steps,type="l"))
+media<-aggregate(steps~interval,c_act,mean)
+with(media,plot(interval,steps,type="l"))
 ```
 
 5-interval with the maximun value 
@@ -38,25 +40,22 @@ Total de NA values in the data
 ```{r}
 nrow(activity[is.na(activity$steps),])
 ```
-Change the NA with the mean by day 
+Change the NA with 0
 ```{r}
-media<-aggregate(steps~date,c_act,mean)
+
 impute<-function (x){
   elrow<-activity[x,1]
-  if(is.na(elrow)){
-    l<-media[media[1]==as.character(activity[x,2])][2]
-    ret<-1
-  }else{
+  if(is.na(elrow))
+    ret<-0
+  else
     ret<-elrow
-  }
-  if (is.na(ret)) ret=0
   ret
 }
 for (i in 1:nrow(activity))
 {
    activity[i,1]<-impute(i)
 }
-total<-aggregate(steps~date,c_act,sum)
+total<-aggregate(steps~date,activity,sum)
 ```
 The histogram of imputed data
 ```{r}
@@ -66,22 +65,28 @@ Mean and median of imputed data
 ```{r}
 data.frame(mean=round(mean(total$steps),digits=2),median=median(total$steps))
 ```
+The mean and median are different because NA is changed by 0, then the number of rows increases and the media and mean go down.
+
 
 ## Are there differences in activity patterns between weekdays and weekends?
 Make the new factor
 ```{r}
 options(verbose=FALSE)
-wd<-data.frame(total,weekd="")
-for (i in 1:nrow(wd))
-{
-  l<-weekdays(as.Date(as.character(wd[i,1])))
-  if (l=="sábado" || l=="domingo"){
-    ##my computer have spanish language
-    wd[i,3]<-"weekend"
-  }else{
-    wd[i,3]<-"weekday"
-  }
-  
+#total<-aggregate(steps~date,activity,mean)
+wd<-data.frame(activity,weekd="",stringsAsFactors=FALSE)
+wd.wnd <- function(date) {
+    day <- weekdays(date)
+    if (day %in% c("lunes", "martes", "miércoles", "jueves", "viernes")) 
+        return("weekday") else if (day %in% c("sábado", "domingo")) 
+        return("weekend") else stop("invalid")
 }
+wd$date<-as.Date(wd$date)
+wd$weekd<-sapply(wd$date, FUN = wd.wnd)
 ```
 Panel showing weekend activity versus weekday
+```{r}
+medias <- aggregate(steps ~ interval + weekd, mean,data=wd)
+ggplot(medias, aes(interval, steps)) + geom_line() + facet_grid(weekd ~ .) + 
+    xlab("5-minute interval") + ylab("Number of steps")
+```
+.-
